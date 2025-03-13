@@ -66,10 +66,10 @@ for port in $OPEN_PORTS; do
 
 		echo "FTP test completed."
 
-            ;;
+            	;;
         
         *)  
-            echo "No specific action defined for port $port" ;;
+            	echo "No specific action defined for port $port" ;;
     esac
 done
 
