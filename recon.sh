@@ -40,18 +40,8 @@ for port in $OPEN_PORTS; do
 
   	21)  
             echo "FTP detected - Checking for anonymous login..."        
-		RESULTS_FILE="$1"
 		USERNAME="anonymous"
-		PASSWORD="anonymous"  
-
-		TARGETS=$(awk '/Nmap scan report for/{ip=$5} /21\/tcp\s+open/{print ip}' "$RESULTS_FILE")
-
-		if [ -z "$TARGETS" ]; then
-  			echo "No valid IPs with open port 21 found in the Nmap scan results."
-  			exit 1
-		fi
-
-
+		PASSWORD="anonymous" 
 		for TARGET in $TARGETS; do
   			ftp -inv "$TARGET" <<END_SCRIPT
 user $USERNAME $PASSWORD
