@@ -54,9 +54,9 @@ for port in $OPEN_PORTS; do
 
 		for TARGET in $TARGETS; do
   			ftp -inv "$TARGET" <<END_SCRIPT
-		user $USERNAME $PASSWORD
-		quit
-		END_SCRIPT
+user $USERNAME $PASSWORD
+quit
+END_SCRIPT
   
   			if [ $? -eq 0 ]; then
     				echo "FTP login successful on $TARGET."
