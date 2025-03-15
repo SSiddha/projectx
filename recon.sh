@@ -3,12 +3,18 @@
 # Define the Nmap results file
 RESULTS_FILE="scan_results.txt"
 
+#Colour codes                                                # Sorry, Colour blinds!!!
+RED='\033[0;31m'    #Severe
+YELLOW='\033[1;33m' #TMI - Too much information
+GREEN='\033[0;32m'  #Harmless or (useless to us).
+NC='\033[0m'        #Colour code to put the usual ink instead of other colours.
+
 # Extract the target IP from the Nmap scan results
 TARGET_IP=$(grep -oP 'Nmap scan report for \K[\d\.]+' "$RESULTS_FILE")
 
 # Check if an IP was found
 if [[ -z "$TARGET_IP" ]]; then
-    echo "No target IP found in scan results. Exiting..."
+    echo "${GREEN}No target IP found in scan results. Exiting...${NC}"
     exit 1
 fi
 
@@ -35,7 +41,16 @@ for port in $OPEN_PORTS; do
             ;;
         
     139|445)
-	    echo "SMB service is open ... Enumerating SMB shares"
+	    printf "\n\n${YELLOW}[+] SMB service is open and enumerating the shares...${NC}\n"
+            nmap --script smb-enum-shares -p 139,445 $TARGET_IP
+            printf "\n\n${YELLOW}[*] Looking for Eternal Blue vulnerability.........${NC}"
+            nmap -p445 --script smb-vuln-ms17-010 $TARGET_IP  > temp.txt
+            if grep -q "CVE-2017-0143" temp.txt; then
+                printf "\n\n${RED}[+] Eternal Blue vulnerability is present${NC}";
+            else
+                printf "\n\n${GREEN}[-] Eternal Blue vulnerability is not present${NC}"
+            fi
+            rm temp.txt
 	    ;;
 
   	21)  
@@ -49,7 +64,7 @@ quit
 END_SCRIPT
   
   			if [ $? -eq 0 ]; then
-    				echo "FTP login successful on $TARGET."
+    				echo "${RED}FTP login successful on $TARGET.${NC}"
     				break  # Exit the loop after successful connection
   			fi
 		done
