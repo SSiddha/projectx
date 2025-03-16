@@ -34,7 +34,15 @@ for port in $OPEN_PORTS; do
         
         80|443)  
             echo "HTTP(S) detected - Running Gobuster for directory enumeration..."
-            ;;
+            if [ $port -eq 80];then
+            gobuster dir -u http://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
+            else
+            gobuster dir -u https://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
+            fi
+            echo " VHOST(S) discovery ...."
+            wfuzz -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$TARGET_IP" --hc 404 http://$TARGET_IP
+	    echo "Performing extensive http(s) enumeration using  NMAP ...."
+	    nmap -sV --script=http-enum $TARGET_IP;;
         
         3306)  
             echo "MySQL detected - Checking for anonymous access..."
