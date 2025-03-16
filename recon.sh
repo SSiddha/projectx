@@ -46,11 +46,23 @@ for port in $OPEN_PORTS; do
             printf "\n\n${YELLOW}[*] Looking for Eternal Blue vulnerability.........${NC}"
             nmap -p445 --script smb-vuln-ms17-010 $TARGET_IP  > temp.txt
             if grep -q "CVE-2017-0143" temp.txt; then
-                printf "\n\n${RED}[+] Eternal Blue vulnerability is present${NC}";
+                printf "\n\n${RED}[+] Eternal Blue vulnerability is present${NC}\n";
             else
-                printf "\n\n${GREEN}[-] Eternal Blue vulnerability is not present${NC}"
+                printf "\n\n${GREEN}[-] Eternal Blue vulnerability is not present${NC}\n"
             fi
             rm temp.txt
+	    enum4linux -U $TARGET_IP > temp.txt
+            grep -Po '\[.*]' temp.txt | awk 'BEGIN{FS=" "} {print $1}' > temp2.txt
+            if [ -s temp2.txt ]
+            then
+                printf "\n${YELLOW}The list of users found in this system...${NC}\n\n"
+                while read user; do
+                   printf "\n${RED}${user}${NC}"
+                done <temp2.txt
+            else
+                printf "\n${GREEN}No users found in this system using SMB${NC}\n"
+            fi
+            rm temp.txt temp2.txt
 	    ;;
 
   	21)  
