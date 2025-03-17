@@ -35,7 +35,7 @@ for port in $OPEN_PORTS; do
         
         80|443)  
             echo "HTTP(S) detected - Running Gobuster for directory enumeration..."
-            if [ $port -eq 80];then
+            if [ $port -eq 80 ]; then
             gobuster dir -u http://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
             else
             gobuster dir -u https://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
