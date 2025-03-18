@@ -43,7 +43,7 @@ for port in $OPEN_PORTS; do
             echo " VHOST(S) discovery ...."
             wfuzz -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$TARGET_IP" --hc 404 http://$TARGET_IP
 	    echo "Performing extensive http(s) enumeration using  NMAP ...."
-	    nmap -sV --script=http-enum $TARGET_IP;;
+	    nmap -sV --script=http-enum -p80 $TARGET_IP;;
         
         3306)  
             echo "[+] Scanning MySQL on $TARGET_IP..."
