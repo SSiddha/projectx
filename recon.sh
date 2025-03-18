@@ -89,6 +89,7 @@ for port in $OPEN_PORTS; do
                 printf "\n${GREEN}No users found in this system using SMB${NC}\n"
             fi
             rm temp.txt temp2.txt
+	    printf "\n"
 	    ;;
 
   	21)  
