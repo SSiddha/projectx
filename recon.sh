@@ -59,11 +59,16 @@ for port in $OPEN_PORTS; do
 	    echo "[+] Checking for MySQL Weak Authentication..."
 	    nmap --script=mysql-brute -p 3306 "$TARGET_IP"
 	    echo "[+] Running SQL Injection Test with sqlmap..."
-	    sqlmap -u "mysql://root@${TARGET_IP}/" --batch --dbs
+	    sqlmap -d "mysql://root:root@${TARGET_IP}/test" --batch --dbs
 	    echo "[+] Checking for MySQL Version Vulnerabilities..."
 	    searchsploit mysql
 	    echo "[+] Checking for Exploitable MySQL Misconfigurations with Metasploit..."
-	    msfconsole -q -x "use auxiliary/scanner/mysql/mysql_schemadump; set RHOSTS $TARGET_IP; run; exit"
+	    msfconsole -q -x "use auxiliary/scanner/mysql/mysql_login;
+	    set RHOSTS $TARGET_IP;
+            set USER_FILE users.txt;
+            set PASS_FILE passwords.txt;
+            run;
+            exit"
 	    ;;
         
     139|445)
