@@ -24,6 +24,12 @@ echo "Target IP: $TARGET_IP"
 # Extract open ports from the results
 OPEN_PORTS=$(grep -oP '^\d+/tcp\s+open' "$RESULTS_FILE" | awk -F/ '{print $1}')
 
+#Below code deletes the port 139 if both of the SMB ports are available. 
+if [[ "${OPEN_PORTS[@]}" =~ '139' ]] && [[ "${OPEN_PORTS[@]}" =~ '445' ]]; then
+        delete=139
+        OPEN_PORTS=${OPEN_PORTS[@]/$delete}
+fi
+
 # Loop through each open port and take action
 for port in $OPEN_PORTS; do
     echo "Detected open port: $port on $TARGET_IP"
