@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Change interrupt key to Ctrl+X (ASCII 24)
+stty intr ^X
+
+# Trap SIGINT (which now maps to Ctrl+X)
+trap "echo -e '\n\033[0;31mProcess interrupted using Ctrl+X. Exiting...\033[0m'; stty intr ^C; exit 1" SIGINT
+
 # Define the Nmap results file
 RESULTS_FILE="scan_results.txt"
 OUTPUT_FILE="final_results.txt"
