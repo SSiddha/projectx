@@ -120,7 +120,7 @@ quit
 END_SCRIPT
   
   			if [ $? -eq 0 ]; then
-    				echo "${RED}FTP login successful on $TARGET.${NC}"
+    				echo "${RED}FTP login successful on $TARGET ${NC}"
     				break  # Exit the loop after successful connection
   			fi
 		done
