@@ -51,7 +51,7 @@ for port in $OPEN_PORTS; do
             break
     	    elif [[ "$choice" == "N" ]]; then
 	        echo "You chose NO. Exiting and moving to the next open port....."
-            exit 0
+            break
     	    else
             echo "Invalid input. Please enter Y or N."
     	    fi
@@ -83,7 +83,7 @@ for port in $OPEN_PORTS; do
 	    break
         elif [[ "$choice" == "N" ]]; then
         echo "You chose NO. Exiting and moving to the next open port....."
-        exit 0
+        break
         else
         echo "Invalid input. Please enter Y or N."
         fi
