@@ -145,6 +145,59 @@ END_SCRIPT
 		echo "FTP test completed."
 
             	;;
+	  53)
+   		nmap_output_file=$1
+
+		# Define the subdomain list location
+		subdomain_list="/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt"
+
+		# Check if the subdomain list exists
+		if [ ! -f "$subdomain_list" ]; then
+    			echo "Subdomain list file '$subdomain_list' not found!"
+    			exit 1
+		fi
+
+		# Step 1: Find the IP addresses with open port 53 (DNS)
+		echo "Searching for open port 53 (DNS) in Nmap scan output..."
+		open_ports=$(grep -B 2 "53/tcp" "$nmap_output_file" | grep "open" | awk '{print $2}')
+
+		# Step 2: If no open port 53 found, exit
+		if [ -z "$open_ports" ]; then
+    			echo "No open port 53 found in the Nmap scan output."
+    			exit 1
+		fi
+
+		# Loop over all IPs with port 53 open
+		for ip in $open_ports; do
+    			echo "Found open port 53 on IP: $ip"
+
+    			# Step 3: Find the domain name from the IP (Reverse DNS lookup)
+    			echo "Performing reverse DNS lookup on IP $ip..."
+    			domain=$(dig -x "$ip" +short &>/dev/null)
+
+    			# Show the domain if found
+    			if [ -z "$domain" ]; then
+        			echo "No domain found for IP $ip."
+    			else
+        			echo "Found domain: $domain for IP $ip"
+    			fi
+
+    			# Step 4: Try to exploit and find subdomains using the subdomain list
+    			echo "Checking for subdomains of $domain using the list $subdomain_list..."
+
+    			# Check subdomains by attempting DNS lookups
+    			while read subdomain; do
+        			full_subdomain="${subdomain}.${domain}"
+        			echo "Checking subdomain: $full_subdomain"
+        			nslookup "$full_subdomain" &>/dev/null
+        			if [ $? -eq 0 ]; then
+            				echo "Subdomain found: $full_subdomain"
+        			fi
+    			done < "$subdomain_list"
+		done
+
+		echo "Script finished."
+  		;;
         
         *)  
             	echo "No specific action defined for port $port" ;;
