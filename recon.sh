@@ -3,204 +3,157 @@
 # Change interrupt key to Ctrl+X (ASCII 24)
 stty intr ^X
 
-# Trap SIGINT (which now maps to Ctrl+X)
-trap "echo -e '\n\033[0;31mProcess interrupted using Ctrl+X. Exiting...\033[0m'; stty intr ^C; exit 1" SIGINT
+# Trap SIGINT (now Ctrl+X)
+trap "echo -e '\n\033[0;31mProcess interrupted. Exiting...\033[0m'; stty intr ^C; exit 1" SIGINT
 
-# Define the Nmap results file
+# Files & Directories
 RESULTS_FILE="scan_results.txt"
-OUTPUT_FILE="final_results.txt"
+LOG_DIR="logs"
+mkdir -p "$LOG_DIR"
 
-#Colour codes                                                # Sorry, Colour blinds!!!
-RED='\033[0;31m'    #Severe
-YELLOW='\033[1;33m' #TMI - Too much information
-GREEN='\033[0;32m'  #Harmless or (useless to us).
-NC='\033[0m'        #Colour code to put the usual ink instead of other colours.
+# Colors
+RED='\033[0;31m'    # Critical
+YELLOW='\033[1;33m' # Warning
+GREEN='\033[0;32m'  # Success
+BLUE='\033[0;34m'   # Info
+NC='\033[0m'        # No Color
 
-# Extract the target IP from the Nmap scan results
-TARGET_IP=$(grep -oP 'Nmap scan report for \K[\d\.]+' "$RESULTS_FILE")
+# --- Filter Functions ---
 
-# Check if an IP was found
-if [[ -z "$TARGET_IP" ]]; then
-    echo "${GREEN}No target IP found in scan results. Exiting...${NC}"
-    exit 1
-fi
+filter_gobuster() {
+    local log_file=$1
+    echo -e "\n${BLUE}[+] Gobuster Results:${NC}"
+    grep -E '^\/.* \(Status: (200|403)\)' "$log_file" | awk '{printf "%-40s %s\n", $1, $2}' || echo -e "${GREEN}No directories found.${NC}"
+}
 
-echo "Target IP: $TARGET_IP"
+filter_hydra() {
+    local log_file=$1
+    echo -e "\n${BLUE}[+] Hydra Results:${NC}"
+    if grep -q "login:" "$log_file"; then
+        grep "login:" "$log_file" | awk -F"login:" '{print $2}' | sed 's/^[ \t]*//'
+    else
+        echo -e "${GREEN}No credentials found.${NC}"
+    fi
+}
 
-# Extract open ports from the results
+filter_ffuf() {
+    local log_file=$1
+    echo -e "\n${BLUE}[+] FFUF Results:${NC}"
+    if grep -q "\[Status:" "$log_file"; then
+        grep "\[Status:" "$log_file" | awk '{printf "%-40s Status:%-5s Size:%-6s Words:%-5s\n", $1, $3, $5, $7}'
+    else
+        echo -e "${GREEN}No valid results.${NC}"
+    fi
+}
+
+filter_wfuzz() {
+    local log_file=$1
+    echo -e "\n${BLUE}[+] Wfuzz Results (Valid Subdomains/VHOSTs):${NC}"
+    if grep -q "00000" "$log_file"; then
+        grep -v "404" "$log_file" | awk '/00000/ {print $2}' | sort -u
+    else
+        echo -e "${GREEN}No subdomains/VHOSTs found.${NC}"
+    fi
+}
+
+filter_sqlmap() {
+    local log_file=$1
+    echo -e "\n${BLUE}[+] SQLMap Results:${NC}"
+    
+    # Extract databases
+    if grep -q "available databases" "$log_file"; then
+        echo -e "${YELLOW}=== Databases Found ===${NC}"
+        sed -n '/available databases/,/^$/p' "$log_file" | grep -v "available databases" | sed '/^$/d'
+    fi
+
+    # Extract tables
+    if grep -q "Database:" "$log_file"; then
+        echo -e "\n${YELLOW}=== Tables Found ===${NC}"
+        grep -A 100 "Database:" "$log_file" | grep -vE "^--$|^$"
+    fi
+
+    # Check for SQLi vulnerabilities
+    if grep -q "is vulnerable" "$log_file"; then
+        echo -e "\n${RED}=== Vulnerabilities ===${NC}"
+        grep "is vulnerable" "$log_file"
+    else
+        echo -e "${GREEN}No SQL injection vulnerabilities found.${NC}"
+    fi
+}
+
+# --- Main Script ---
+
+TARGET_IP=$(grep -oP 'Nmap scan report for \K[\d\.]+' "$RESULTS_FILE" || echo "")
+[[ -z "$TARGET_IP" ]] && { echo -e "${RED}No IP found. Exiting.${NC}"; exit 1; }
+
+echo -e "${GREEN}Target IP: $TARGET_IP${NC}"
 OPEN_PORTS=$(grep -oP '^\d+/tcp\s+open' "$RESULTS_FILE" | awk -F/ '{print $1}')
 
-#Below code deletes the port 139 if both of the SMB ports are available. 
-if [[ "${OPEN_PORTS[@]}" =~ '139' ]] && [[ "${OPEN_PORTS[@]}" =~ '445' ]]; then
-        delete=139
-        OPEN_PORTS=${OPEN_PORTS[@]/$delete}
-fi
+# Remove port 139 if 445 is open (SMB redundancy)
+[[ "${OPEN_PORTS[@]}" =~ '139' && "${OPEN_PORTS[@]}" =~ '445' ]] && OPEN_PORTS=${OPEN_PORTS[@]/139/}
 
-# Loop through each open port and take action
 for port in $OPEN_PORTS; do
-    echo "Detected open port: $port on $TARGET_IP"
-    
+    LOG_FILE="$LOG_DIR/port_${port}.log"
+    echo -e "\n${YELLOW}Scanning port $port...${NC}"
+
     case $port in
-        22)  
-            while true; do # Loop to accept input again if the user enters a wrong value !!!
-	        read -p "Do you want to run a brute force password attack for SSH [!!Warning Brute force Attacks consumes a lot of time] ? (Y/N): " choice  #Reads choice from the user and performs menu based operations
-	        choice=${choice^^}
-	        if [[ "$choice" == "Y" ]]; then
-	        echo "SSH detected - Running Hydra for brute force testing..."
-            hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt ssh://$TARGET_IP
-            break
-    	    elif [[ "$choice" == "N" ]]; then
-	        echo "You chose NO. Exiting and moving to the next open port....."
-            break
-    	    else
-            echo "Invalid input. Please enter Y or N."
-    	    fi
-            done;;
+        80|443)
+            # Gobuster
+            echo -e "${BLUE}Running Gobuster...${NC}"
+            [[ $port -eq 80 ]] && url="http://$TARGET_IP/" || url="https://$TARGET_IP/"
+            gobuster dir -u "$url" -w /usr/share/wordlists/dirb/common.txt -t 50 -x php,html,txt -b 403,404 | tee -a "$LOG_FILE"
+            filter_gobuster "$LOG_FILE"
 
-        80|443)  
-            echo "HTTP(S) detected - Running Gobuster for directory enumeration..."
-            if [ $port -eq 80 ]; then
-            gobuster dir -u http://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
-            else
-            gobuster dir -u https://$TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 100  -f -x pdf -b 403,404
-            fi
-            echo " VHOST(S) discovery ...."
-            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$TARGET_IP" --hc 404 http://$TARGET_IP
-	    echo "Performing extensive http(s) enumeration using  NMAP ...."
-	    nmap -sV --script=http-enum -p80 $TARGET_IP;;
-        
-        3306)  
-            echo "[+] Scanning MySQL on $TARGET_IP..."
-	    nmap -p 3306 --open -sV --script=mysql* "$TARGET_IP"
-	    echo "[+] Checking for Anonymous Login..."
-	    nmap --script=mysql-empty-password -p 3306 "$TARGET_IP" 
-	    while true; do # Same as SSH brute force
-            read -p "Do you want to run a brute force password attack for SQL [!!Warning Brute force Attacks consumes a lot of time] ? (Y/N): " choice
-        choice=${choice^^}
-        if [[ "$choice" == "Y" ]]; then
-        echo "[+] Attempting Brute Force with Hydra..."
-	    hydra -L /usr/share/metasploit-framework/data/wordlists/unix_users.txt -P /usr/share/wordlists/rockyou.txt "$TARGET_IP" mysql -V 
-	    break
-        elif [[ "$choice" == "N" ]]; then
-        echo "You chose NO. Exiting and moving to the next open port....."
-        break
-        else
-        echo "Invalid input. Please enter Y or N."
-        fi
-        done
-        echo "[+] Checking for MySQL Database Enumeration..."
-	    nmap --script=mysql-databases -p 3306 "$TARGET_IP"
-	    echo "[+] Checking for MySQL Users Enumeration..."
-	    nmap --script=mysql-users -p 3306 "$TARGET_IP"
-	    echo "[+] Checking for MySQL Weak Authentication..."
-	    nmap --script=mysql-brute -p 3306 "$TARGET_IP"
-	    echo "[+] Running SQL Injection Test with sqlmap..."
-	    sqlmap -d "mysql://root:root@${TARGET_IP}/test" --batch --dbs
-	    echo "[+] Checking for MySQL Version Vulnerabilities..."
-	    searchsploit mysql
-	    ;;
-        
-    139|445)
-	    printf "\n\n${YELLOW}[+] SMB service is open and enumerating the shares...${NC}\n"
-            nmap --script smb-enum-shares -p 139,445 $TARGET_IP
-            printf "\n\n${YELLOW}[*] Looking for Eternal Blue vulnerability.........${NC}"
-            nmap -p445 --script smb-vuln-ms17-010 $TARGET_IP  > temp.txt
-            if grep -q "CVE-2017-0143" temp.txt; then
-                printf "\n\n${RED}[+] Eternal Blue vulnerability is present${NC}\n";
-            else
-                printf "\n\n${GREEN}[-] Eternal Blue vulnerability is not present${NC}\n"
-            fi
-            rm temp.txt
-	    enum4linux -U $TARGET_IP > temp.txt
-            grep -Po '\[.*]' temp.txt | awk 'BEGIN{FS=" "} {print $1}' > temp2.txt
-            if [ -s temp2.txt ]
-            then
-                printf "\n${YELLOW}The list of users found in this system...${NC}\n\n"
-                while read user; do
-                   printf "\n${RED}${user}${NC}"
-                done <temp2.txt
-            else
-                printf "\n${GREEN}No users found in this system using SMB${NC}\n"
-            fi
-            rm temp.txt temp2.txt
-	    printf "\n"
-	    ;;
+            # FFUF
+            echo -e "${BLUE}Running FFUF...${NC}"
+            ffuf -u "${url}FUZZ" -w /usr/share/wordlists/dirb/common.txt -of csv -o "$LOG_DIR/ffuf_$port.csv" | tee -a "$LOG_FILE"
+            filter_ffuf "$LOG_DIR/ffuf_$port.csv"
 
-  	21)  
-            echo "FTP detected - Checking for anonymous login..."        
-		USERNAME="anonymous"
-		PASSWORD="anonymous" 
-		for TARGET in $TARGETS; do
-  			ftp -inv "$TARGET" <<END_SCRIPT
-user $USERNAME $PASSWORD
+            # Wfuzz (VHOSTs)
+            echo -e "${BLUE}Running Wfuzz for VHOSTs...${NC}"
+            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$TARGET_IP" --hc 404 "$url" | tee -a "$LOG_FILE"
+            filter_wfuzz "$LOG_FILE"
+            ;;
+
+        3306)
+            # SQLMap
+            echo -e "${BLUE}Running SQLMap...${NC}"
+            sqlmap -u "http://$TARGET_IP/" --batch --crawl=2 --level=3 --risk=2 | tee -a "$LOG_FILE"
+            filter_sqlmap "$LOG_FILE"
+
+            # Hydra (MySQL brute-force)
+            read -p "Brute-force MySQL? (Y/N): " choice
+            if [[ "${choice^^}" == "Y" ]]; then
+                hydra -L /usr/share/wordlists/metasploit/unix_users.txt -P /usr/share/wordlists/rockyou.txt "$TARGET_IP" mysql -t 4 -vV | tee -a "$LOG_FILE"
+                filter_hydra "$LOG_FILE"
+            fi
+            ;;
+
+        21)
+            # FTP checks + Hydra
+            echo -e "${BLUE}Checking FTP...${NC}"
+            ftp -inv "$TARGET_IP" <<EOF | tee -a "$LOG_FILE"
+user anonymous anonymous
 quit
-END_SCRIPT
-  
-  			if [ $? -eq 0 ]; then
-    				echo "${RED}FTP login successful on $TARGET ${NC}"
-    				break  # Exit the loop after successful connection
-  			fi
-		done
-
-		echo "FTP test completed."
-
-            	;;
-	  53)
-   		nmap_output_file=$1
-
-		# Define the subdomain list location
-		subdomain_list="/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt"
-
-		# Check if the subdomain list exists
-		if [ ! -f "$subdomain_list" ]; then
-    			echo "Subdomain list file '$subdomain_list' not found!"
-    			exit 1
-		fi
-
-		# Step 1: Find the IP addresses with open port 53 (DNS)
-		echo "Searching for open port 53 (DNS) in Nmap scan output..."
-		open_ports=$(grep -B 2 "53/tcp" "$nmap_output_file" | grep "open" | awk '{print $2}')
-
-		# Step 2: If no open port 53 found, exit
-		if [ -z "$open_ports" ]; then
-    			echo "No open port 53 found in the Nmap scan output."
-    			exit 1
-		fi
-
-		# Loop over all IPs with port 53 open
-		for ip in $open_ports; do
-    			echo "Found open port 53 on IP: $ip"
-
-    			# Step 3: Find the domain name from the IP (Reverse DNS lookup)
-    			echo "Performing reverse DNS lookup on IP $ip..."
-    			domain=$(dig -x "$ip" +short &>/dev/null)
-
-    			# Show the domain if found
-    			if [ -z "$domain" ]; then
-        			echo "No domain found for IP $ip."
-    			else
-        			echo "Found domain: $domain for IP $ip"
-    			fi
-
-    			# Step 4: Try to exploit and find subdomains using the subdomain list
-    			echo "Checking for subdomains of $domain using the list $subdomain_list..."
-
-    			# Check subdomains by attempting DNS lookups
-    			while read subdomain; do
-        			full_subdomain="${subdomain}.${domain}"
-        			echo "Checking subdomain: $full_subdomain"
-        			nslookup "$full_subdomain" &>/dev/null
-        			if [ $? -eq 0 ]; then
-            				echo "Subdomain found: $full_subdomain"
-        			fi
-    			done < "$subdomain_list"
-		done
-
-		echo "Script finished."
-  		;;
+EOF
+            [[ $? -eq 0 ]] && { echo -e "${RED}Anonymous FTP login allowed!${NC}"; }
+            ;;
         
-        *)  
-            	echo "No specific action defined for port $port" ;;
+        53)
+            # DNS Enumeration with Wfuzz
+            echo -e "${BLUE}Running Wfuzz for DNS...${NC}"
+            domain=$(dig -x "$TARGET_IP" +short | sed 's/\.$//')
+            [[ -z "$domain" ]] && domain="$TARGET_IP"
+            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$domain" --hc 404 "http://$domain" | tee -a "$LOG_FILE"
+            filter_wfuzz "$LOG_FILE"
+            ;;
+
+        *)
+            echo -e "${GREEN}No automation for port $port.${NC}"
+            ;;
     esac
 done
 
+# Restore Ctrl+C
+stty intr ^C
+echo -e "${GREEN}Scan completed. Logs saved in $LOG_DIR.${NC}"
