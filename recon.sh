@@ -124,38 +124,47 @@ for port in $OPEN_PORTS; do
             fi
             ;;
             
-        80|443)
-            # Gobuster
+       80|443)
+            # Gobuster (still shows progress)
             echo -e "${BLUE}Running Gobuster...${NC}"
             [[ $port -eq 80 ]] && url="http://$TARGET_IP/" || url="https://$TARGET_IP/"
             gobuster dir -u "$url" -w /usr/share/wordlists/dirb/common.txt -t 50 -x php,html,txt -b 403,404 | tee -a "$LOG_FILE"
             filter_gobuster "$LOG_FILE"
 
-            # FFUF
+            # FFUF (still shows progress)
             echo -e "${BLUE}Running FFUF...${NC}"
-            ffuf -u "${url}FUZZ" -w /usr/share/wordlists/dirb/common.txt -of csv -o "$LOG_DIR/ffuf_$port.csv" | tee -a "$LOG_FILE"
+            ffuf -u "${url}FUZZ" -w /usr/share/wordlists/dirb/common.txt -of csv -o "$LOG_DIR/ffuf_$port.csv" >/dev/null 2>&1
             filter_ffuf "$LOG_DIR/ffuf_$port.csv"
 
-            # Wfuzz (VHOSTs)
+            # Wfuzz (SILENT - only shows filtered results)
             echo -e "${BLUE}Running Wfuzz for VHOSTs...${NC}"
-            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$TARGET_IP" --hc 404 "$url" | tee -a "$LOG_FILE"
-            filter_wfuzz "$LOG_FILE"
+            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt \
+                  -H "Host: FUZZ.$TARGET_IP" \
+                  --hc 404 \
+                  "$url" > "$LOG_DIR/wfuzz_vhosts.log" 2>&1
+            filter_wfuzz "$LOG_DIR/wfuzz_vhosts.log"  # <-- Only filtered results display
             ;;
 
         3306)
-            # SQLMap
+            # SQLMap (SILENT - only shows filtered results)
             echo -e "${BLUE}Running SQLMap...${NC}"
-            sqlmap -u "http://$TARGET_IP/" --batch --crawl=2 --level=3 --risk=2 | tee -a "$LOG_FILE"
-            filter_sqlmap "$LOG_FILE"
+            sqlmap -u "http://$TARGET_IP/" \
+                   --batch \
+                   --crawl=2 \
+                   --level=3 \
+                   --risk=2 \
+                   --output-dir="$LOG_DIR/sqlmap" > "$LOG_DIR/sqlmap.log" 2>&1
+            filter_sqlmap "$LOG_DIR/sqlmap.log"  # <-- Only filtered results display
 
-            # Hydra (MySQL brute-force)
+            # Hydra (still interactive)
             read -p "Brute-force MySQL? (Y/N): " choice
             if [[ "${choice^^}" == "Y" ]]; then
-                hydra -L /usr/share/wordlists/metasploit/unix_users.txt -P /usr/share/wordlists/rockyou.txt "$TARGET_IP" mysql -t 4 -vV | tee -a "$LOG_FILE"
+                hydra -L /usr/share/wordlists/metasploit/unix_users.txt \
+                      -P /usr/share/wordlists/rockyou.txt \
+                      "$TARGET_IP" mysql -t 4 -vV | tee -a "$LOG_FILE"
                 filter_hydra "$LOG_FILE"
             fi
             ;;
-
         21)
             # FTP checks + Hydra
             echo -e "${BLUE}Checking FTP...${NC}"
@@ -166,14 +175,23 @@ EOF
             [[ $? -eq 0 ]] && { echo -e "${RED}Anonymous FTP login allowed!${NC}"; }
             ;;
         
-        53)
-            # DNS Enumeration with Wfuzz
-            echo -e "${BLUE}Running Wfuzz for DNS...${NC}"
-            domain=$(dig -x "$TARGET_IP" +short | sed 's/\.$//')
-            [[ -z "$domain" ]] && domain="$TARGET_IP"
-            wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.$domain" --hc 404 "http://$domain" | tee -a "$LOG_FILE"
-            filter_wfuzz "$LOG_FILE"
-            ;;
+       53)
+    # DNS Enumeration (Silent Wfuzz)
+    echo -e "${BLUE}[+] Running DNS Enumeration...${NC}"
+    
+    # 1. Reverse DNS lookup
+    domain=$(dig -x "$TARGET_IP" +short 2>/dev/null | head -n1 | sed 's/\.$//')
+    [[ -z "$domain" ]] && domain="$TARGET_IP"
+    
+    # 2. Wfuzz subdomain scan (silent)
+    wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt \
+          -H "Host: FUZZ.$domain" \
+          --hc 404 \
+          "http://$domain" > "$LOG_DIR/wfuzz_dns.log" 2>&1
+    
+    # 3. Show filtered results only
+    filter_wfuzz "$LOG_DIR/wfuzz_dns.log"
+    ;;
 
         *)
             echo -e "${GREEN}No automation for port $port.${NC}"
