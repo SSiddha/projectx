@@ -23,7 +23,8 @@ NC='\033[0m'        # No Color
 filter_gobuster() {
     local log_file=$1
     echo -e "\n${BLUE}[+] Gobuster Results:${NC}"
-    grep -E '^\/.* \(Status: (200|403)\)' "$log_file" | awk '{printf "%-40s %s\n", $1, $2}' || echo -e "${GREEN}No directories found.${NC}"
+    # Remove ANSI escape codes and filter relevant lines
+    grep -E '^\s*/.*\(Status: (200|403|301)\)' "$log_file" | sed 's/\x1B\[[0-9;]*[mK]//g' | awk '{printf "%-40s %s\n", $1, $2}' || echo -e "${GREEN}No directories found.${NC}"
 }
 
 filter_hydra() {
