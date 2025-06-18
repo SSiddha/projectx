@@ -1,133 +1,34 @@
-Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-03-12 14:06 EDT
-Nmap scan report for 192.168.254.154
-Host is up (0.0032s latency).
-Not shown: 65505 closed tcp ports (conn-refused)
-PORT      STATE SERVICE     VERSION
-21/tcp    open  ftp         vsftpd 2.3.4
-|_ftp-anon: Anonymous FTP login allowed (FTP code 230)
-| ftp-syst: 
-|   STAT: 
-| FTP server status:
-|      Connected to 192.168.254.128
-|      Logged in as ftp
-|      TYPE: ASCII
-|      No session bandwidth limit
-|      Session timeout in seconds is 300
-|      Control connection is plain text
-|      Data connections will be plain text
-|      vsFTPd 2.3.4 - secure, fast, stable
-|_End of status
-22/tcp    open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1 (protocol 2.0)
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-06-12 14:40 EDT
+Nmap scan report for 192.168.243.19
+Host is up (0.056s latency).
+Not shown: 65531 filtered tcp ports (no-response)
+PORT     STATE  SERVICE VERSION
+22/tcp   open   ssh     OpenSSH 8.9p1 Ubuntu 3 (Ubuntu Linux; protocol 2.0)
 | ssh-hostkey: 
-|   1024 60:0f:cf:e1:c0:5f:6a:74:d6:90:24:fa:c4:d5:6c:cd (DSA)
-|_  2048 56:56:24:0f:21:1d:de:a7:2b:ae:61:b1:24:3d:e8:f3 (RSA)
-23/tcp    open  telnet      Linux telnetd
-25/tcp    open  smtp        Postfix smtpd
-| ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
-| Not valid before: 2010-03-17T14:07:45
-|_Not valid after:  2010-04-16T14:07:45
-| sslv2: 
-|   SSLv2 supported
-|   ciphers: 
-|     SSL2_RC4_128_EXPORT40_WITH_MD5
-|     SSL2_RC2_128_CBC_WITH_MD5
-|     SSL2_DES_192_EDE3_CBC_WITH_MD5
-|     SSL2_DES_64_CBC_WITH_MD5
-|     SSL2_RC2_128_CBC_EXPORT40_WITH_MD5
-|_    SSL2_RC4_128_WITH_MD5
-|_ssl-date: 2025-03-12T18:08:26+00:00; +4s from scanner time.
-|_smtp-commands: metasploitable.localdomain, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN
-53/tcp    open  domain      ISC BIND 9.4.2
-| dns-nsid: 
-|_  bind.version: 9.4.2
-80/tcp    open  http        Apache httpd 2.2.8 ((Ubuntu) DAV/2)
-|_http-server-header: Apache/2.2.8 (Ubuntu) DAV/2
-|_http-title: Metasploitable2 - Linux
-111/tcp   open  rpcbind     2 (RPC #100000)
-| rpcinfo: 
-|   program version    port/proto  service
-|   100000  2            111/tcp   rpcbind
-|   100000  2            111/udp   rpcbind
-|   100003  2,3,4       2049/tcp   nfs
-|   100003  2,3,4       2049/udp   nfs
-|   100005  1,2,3      36268/tcp   mountd
-|   100005  1,2,3      54597/udp   mountd
-|   100021  1,3,4      37732/udp   nlockmgr
-|   100021  1,3,4      55624/tcp   nlockmgr
-|   100024  1          38892/tcp   status
-|_  100024  1          45321/udp   status
-139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-445/tcp   open  netbios-ssn Samba smbd 3.0.20-Debian (workgroup: WORKGROUP)
-512/tcp   open  exec        netkit-rsh rexecd
-513/tcp   open  login       OpenBSD or Solaris rlogind
-514/tcp   open  tcpwrapped
-1099/tcp  open  java-rmi    GNU Classpath grmiregistry
-1524/tcp  open  bindshell   Metasploitable root shell
-2049/tcp  open  nfs         2-4 (RPC #100003)
-2121/tcp  open  ftp         ProFTPD 1.3.1
-3306/tcp  open  mysql       MySQL 5.0.51a-3ubuntu5
-| mysql-info: 
-|   Protocol: 10
-|   Version: 5.0.51a-3ubuntu5
-|   Thread ID: 9
-|   Capabilities flags: 43564
-|   Some Capabilities: Support41Auth, SupportsTransactions, SwitchToSSLAfterHandshake, Speaks41ProtocolNew, LongColumnFlag, SupportsCompression, ConnectWithDatabase
-|   Status: Autocommit
-|_  Salt: k;!4"M>-f;3/0A:<^E~l
-3632/tcp  open  distccd     distccd v1 ((GNU) 4.2.4 (Ubuntu 4.2.4-1ubuntu4))
-5432/tcp  open  postgresql  PostgreSQL DB 8.3.0 - 8.3.7
-| ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
-| Not valid before: 2010-03-17T14:07:45
-|_Not valid after:  2010-04-16T14:07:45
-|_ssl-date: 2025-03-12T18:08:26+00:00; +4s from scanner time.
-5900/tcp  open  vnc         VNC (protocol 3.3)
-| vnc-info: 
-|   Protocol version: 3.3
-|   Security types: 
-|_    VNC Authentication (2)
-6000/tcp  open  X11         (access denied)
-6667/tcp  open  irc         UnrealIRCd (Admin email admin@Metasploitable.LAN)
-| irc-info: 
-|   users: 1
-|   servers: 1
-|   lusers: 1
-|   lservers: 0
-|   server: irc.Metasploitable.LAN
-|   version: Unreal3.2.8.1. irc.Metasploitable.LAN 
-|   uptime: 0 days, 0:06:11
-|   source ident: nmap
-|   source host: 2B185DBC.34AB5110.FFFA6D49.IP
-|_  error: Closing Link: uppafbvwp[192.168.254.128] (Quit: uppafbvwp)
-6697/tcp  open  irc         UnrealIRCd
-8009/tcp  open  ajp13       Apache Jserv (Protocol v1.3)
-|_ajp-methods: Failed to get a valid response for the OPTION request
-8180/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
-|_http-server-header: Apache-Coyote/1.1
-|_http-favicon: Apache Tomcat
-|_http-title: Apache Tomcat/5.5
-8787/tcp  open  drb         Ruby DRb RMI (Ruby 1.8; path /usr/lib/ruby/1.8/drb)
-36268/tcp open  mountd      1-3 (RPC #100005)
-38892/tcp open  status      1 (RPC #100024)
-44599/tcp open  java-rmi    GNU Classpath grmiregistry
-55624/tcp open  nlockmgr    1-4 (RPC #100021)
-Service Info: Hosts:  metasploitable.localdomain, irc.Metasploitable.LAN; OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+|   256 4e:eb:da:e8:00:da:40:3d:f4:22:ad:fb:41:2c:2a:4c (ECDSA)
+|_  256 de:dc:7b:84:9e:6e:d8:fa:98:23:2b:9e:71:67:88:fe (ED25519)
+80/tcp   open   http    Apache httpd 2.4.52 ((Ubuntu))
+|_http-title: Book Bargains Online
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+443/tcp  closed https
+8000/tcp open   http    WSGIServer 0.2 (Python 3.10.12)
+| http-robots.txt: 31 disallowed entries (15 shown)
+| /admin/ /js/ /accounts/ /source/ /comment/ /commit/ 
+| /update/ /push/ /reset/ /lock/ /unlock/ /changes/ /changes/csv/ 
+|_/search/ /replace/
+|_http-server-header: WSGIServer/0.2 CPython/3.10.12
+|_http-title:   Weblate
+Aggressive OS guesses: Linux 5.0 - 5.14 (98%), MikroTik RouterOS 7.2 - 7.5 (Linux 5.6.3) (98%), Linux 4.15 - 5.19 (94%), Linux 2.6.32 - 3.13 (93%), Linux 5.0 (92%), OpenWrt 22.03 (Linux 5.10) (92%), Linux 3.10 - 4.11 (91%), Linux 3.2 - 4.14 (90%), Linux 4.15 (90%), Linux 2.6.32 - 3.10 (90%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 4 hops
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 
-Host script results:
-|_smb2-time: Protocol negotiation failed (SMB2)
-| smb-os-discovery: 
-|   OS: Unix (Samba 3.0.20-Debian)
-|   Computer name: metasploitable
-|   NetBIOS computer name: 
-|   Domain name: localdomain
-|   FQDN: metasploitable.localdomain
-|_  System time: 2025-03-12T14:08:19-04:00
-|_nbstat: NetBIOS name: METASPLOITABLE, NetBIOS user: <unknown>, NetBIOS MAC: <unknown> (unknown)
-|_clock-skew: mean: 1h00m04s, deviation: 2h00m00s, median: 3s
-| smb-security-mode: 
-|   account_used: <blank>
-|   authentication_level: user
-|   challenge_response: supported
-|_  message_signing: disabled (dangerous, but default)
+TRACEROUTE (using port 443/tcp)
+HOP RTT      ADDRESS
+1   55.07 ms 192.168.45.1
+2   54.74 ms 192.168.45.254
+3   56.26 ms 192.168.251.1
+4   56.38 ms 192.168.243.19
 
-Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-Nmap done: 1 IP address (1 host up) scanned in 140.09 seconds
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 103.93 seconds
