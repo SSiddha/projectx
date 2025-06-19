@@ -18,15 +18,6 @@ Output organized in a dedicated logs/ directory
 Interactive prompts for potentially noisy actions (e.g., bruteforce)
 Ctrl+X is used as the interrupt key to avoid accidental exits
 
-📁 Folder Structure
-project-x/
-├── script.sh                 # Main automation script
-├── scan_results.txt         # Nmap output file (required input)
-├── filters/
-│   ├── filter_gobuster.sh   # Custom Gobuster output filter (optional)
-│   └── filter_hydra.sh      # Custom Hydra output filter (optional)
-└── logs/                    # Output directory for all scans
-
 🚀 Usage
 Ensure prerequisites are installed:
 sudo apt install nmap hydra gobuster sqlmap rpcbind enum4linux
